@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { ArrowRight, Sparkles, Home, ShieldCheck } from "lucide-react";
+import { triggerAppointmentModal, triggerQuotationModal } from "@/components/FormModals";
 
 export default function Hero() {
   const containerVariants = {
@@ -80,19 +81,19 @@ export default function Hero() {
             variants={itemVariants}
             className="flex flex-col sm:flex-row gap-4 mb-12"
           >
-            <a
-              href="#contact"
-              className="inline-flex items-center justify-center gap-2 bg-accent-terracotta text-white hover:bg-primary px-8 py-4 rounded-full text-[15px] font-semibold transition-all duration-300 hover:scale-[1.02] shadow-lg shadow-accent-terracotta/20 hover:shadow-primary/20"
+            <button
+              onClick={triggerAppointmentModal}
+              className="inline-flex items-center justify-center gap-2 bg-accent-terracotta text-white hover:bg-primary px-8 py-4 rounded-full text-[15px] font-semibold transition-all duration-300 hover:scale-[1.02] shadow-lg shadow-accent-terracotta/20 hover:shadow-primary/20 cursor-pointer"
             >
               <span>Book Free Consultation</span>
               <ArrowRight size={16} />
-            </a>
-            <a
-              href="#contact"
-              className="inline-flex items-center justify-center bg-bg-cream/80 backdrop-blur-sm border-2 border-primary text-primary hover:bg-surface px-8 py-4 rounded-full text-[15px] font-semibold transition-all duration-300 hover:scale-[1.02]"
+            </button>
+            <button
+              onClick={() => triggerQuotationModal("Residential Construction")}
+              className="inline-flex items-center justify-center bg-bg-cream/80 backdrop-blur-sm border-2 border-primary text-primary hover:bg-surface px-8 py-4 rounded-full text-[15px] font-semibold transition-all duration-300 hover:scale-[1.02] cursor-pointer"
             >
               <span>Request Quotation</span>
-            </a>
+            </button>
           </motion.div>
 
           {/* Trust Indicators */}

@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { Home, Hammer, Paintbrush, Droplets, Grid, Landmark, ArrowRight } from "lucide-react";
+import { triggerAppointmentModal, triggerQuotationModal } from "@/components/FormModals";
 
 export default function Services() {
   const services = [
@@ -94,7 +95,17 @@ export default function Services() {
               
               <a
                 href={service.link}
-                className="inline-flex items-center gap-2 text-[14px] font-semibold text-accent-terracotta hover:text-primary transition-colors group-hover:translate-x-1 transition-transform"
+                onClick={(e) => {
+                  if (service.link === "#contact") {
+                    e.preventDefault();
+                    if (service.cta.toLowerCase().includes("consultation")) {
+                      triggerAppointmentModal();
+                    } else {
+                      triggerQuotationModal(service.title);
+                    }
+                  }
+                }}
+                className="inline-flex items-center gap-2 text-[14px] font-semibold text-accent-terracotta hover:text-primary transition-colors group-hover:translate-x-1 transition-transform cursor-pointer"
               >
                 <span>{service.cta}</span>
                 <ArrowRight size={14} />

@@ -2,13 +2,19 @@
 
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Phone, Mail, Clock, MapPin, Send, MessageSquare, ChevronDown } from "lucide-react";
+import { Phone, Mail, Clock, MapPin, Send, MessageSquare, ChevronDown, RefreshCw } from "lucide-react";
+import confetti from "canvas-confetti";
+import { submitContactForm } from "@/app/actions";
+import { showToastNotification } from "@/components/FormModals";
 
 export default function Contact() {
   const [submitted, setSubmitted] = useState(false);
   const [isSelectOpen, setIsSelectOpen] = useState(false);
   const [selectedService, setSelectedService] = useState("New Home Construction");
   const dropdownRef = useRef<HTMLDivElement>(null);
+  
+  const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string[]>>({});
 
   const servicesList = [
     "New Home Construction",
@@ -19,10 +25,35 @@ export default function Contact() {
     "Other Services"
   ];
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setSubmitted(true);
-    setTimeout(() => setSubmitted(false), 5000);
+    if (loading) return;
+    setLoading(true);
+    setErrors({});
+
+    const formData = new FormData(e.currentTarget);
+    try {
+      const res = await submitContactForm(null, formData);
+      if (res.success) {
+        setSubmitted(true);
+        confetti({
+          particleCount: 80,
+          spread: 60,
+          origin: { y: 0.8 },
+          colors: ["#1c3d3a", "#5a7d75", "#c68a6b", "#eae5dc"],
+        });
+        showToastNotification("Consultation request submitted successfully!", "success");
+      } else if (res.errors) {
+        setErrors(res.errors);
+        showToastNotification("Please correct the errors in the form.", "error");
+      } else {
+        showToastNotification(res.message || "Something went wrong.", "error");
+      }
+    } catch (err) {
+      showToastNotification("Network connection error. Please try again.", "error");
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -160,28 +191,47 @@ export default function Contact() {
                     onSubmit={handleSubmit}
                     className="space-y-5"
                   >
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                    {/* Honeypot Spam Protection */}
+                    <input
+                      type="text"
+                      name="website"
+                      className="hidden"
+                      style={{ display: "none" }}
+                      tabIndex={-1}
+                      autoComplete="off"
+                    />
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                       <div>
                         <label className="block text-[13px] font-semibold text-text-charcoal/80 mb-2">
                           Your Name
                         </label>
                         <input
                           type="text"
+                          name="fullName"
                           required
+                          disabled={loading}
                           placeholder="e.g. Ramesh Patel"
-                          className="w-full px-4 py-3 rounded-xl bg-surface border border-outline focus:outline-none focus:ring-2 focus:ring-secondary-sage/30 focus:border-secondary-sage transition-all text-[14px]"
+                          className="w-full px-4 py-3 rounded-xl bg-surface border border-outline focus:outline-none focus:ring-2 focus:ring-secondary-sage/30 focus:border-secondary-sage transition-all text-[14px] disabled:opacity-60"
                         />
+                        {errors.fullName && (
+                          <p className="text-[11px] text-accent-terracotta mt-1">{errors.fullName[0]}</p>
+                        )}
                       </div>
                       <div>
                         <label className="block text-[13px] font-semibold text-text-charcoal/80 mb-2">
                           Phone Number
                         </label>
                         <input
-                          type="tel"
+                          type="text"
+                          name="phone"
                           required
-                          placeholder="e.g. 98765 43210"
-                          className="w-full px-4 py-3 rounded-xl bg-surface border border-outline focus:outline-none focus:ring-2 focus:ring-secondary-sage/30 focus:border-secondary-sage transition-all text-[14px]"
+                          disabled={loading}
+                          placeholder="e.g. 9876543210"
+                          className="w-full px-4 py-3 rounded-xl bg-surface border border-outline focus:outline-none focus:ring-2 focus:ring-secondary-sage/30 focus:border-secondary-sage transition-all text-[14px] disabled:opacity-60"
                         />
+                        {errors.phone && (
+                          <p className="text-[11px] text-accent-terracotta mt-1">{errors.phone[0]}</p>
+                        )}
                       </div>
                     </div>
 
@@ -192,9 +242,14 @@ export default function Contact() {
                         </label>
                         <input
                           type="email"
+                          name="email"
+                          disabled={loading}
                           placeholder="e.g. ramesh@gmail.com"
-                          className="w-full px-4 py-3 rounded-xl bg-surface border border-outline focus:outline-none focus:ring-2 focus:ring-secondary-sage/30 focus:border-secondary-sage transition-all text-[14px]"
+                          className="w-full px-4 py-3 rounded-xl bg-surface border border-outline focus:outline-none focus:ring-2 focus:ring-secondary-sage/30 focus:border-secondary-sage transition-all text-[14px] disabled:opacity-60"
                         />
+                        {errors.email && (
+                          <p className="text-[11px] text-accent-terracotta mt-1">{errors.email[0]}</p>
+                        )}
                       </div>
                       <div>
                         <label className="block text-[13px] font-semibold text-text-charcoal/80 mb-2">
@@ -203,8 +258,9 @@ export default function Contact() {
                         <div className="relative" ref={dropdownRef}>
                           <button
                             type="button"
+                            disabled={loading}
                             onClick={() => setIsSelectOpen(!isSelectOpen)}
-                            className="w-full px-4 py-3 rounded-xl bg-surface border border-outline focus:outline-none focus:ring-2 focus:ring-secondary-sage/30 focus:border-secondary-sage transition-all text-[14px] text-text-charcoal/80 cursor-pointer flex items-center justify-between text-left"
+                            className="w-full px-4 py-3 rounded-xl bg-surface border border-outline focus:outline-none focus:ring-2 focus:ring-secondary-sage/30 focus:border-secondary-sage transition-all text-[14px] text-text-charcoal/80 cursor-pointer flex items-center justify-between text-left disabled:opacity-60"
                           >
                             <span>{selectedService}</span>
                             <motion.span
@@ -216,7 +272,7 @@ export default function Contact() {
                             </motion.span>
                           </button>
                           
-                          <input type="hidden" name="service" value={selectedService} />
+                          <input type="hidden" name="serviceInterested" value={selectedService} />
 
                           <AnimatePresence>
                             {isSelectOpen && (
@@ -251,24 +307,34 @@ export default function Contact() {
                       </div>
                     </div>
 
-                    <div>
+                     <div>
                       <label className="block text-[13px] font-semibold text-text-charcoal/80 mb-2">
                         Message / Dream Home Ideas
                       </label>
                       <textarea
                         rows={4}
+                        name="message"
                         required
+                        disabled={loading}
                         placeholder="Tell us about your home dreams or the repair work you need."
-                        className="w-full px-4 py-3 rounded-xl bg-surface border border-outline focus:outline-none focus:ring-2 focus:ring-secondary-sage/30 focus:border-secondary-sage transition-all text-[14px] resize-none"
+                        className="w-full px-4 py-3 rounded-xl bg-surface border border-outline focus:outline-none focus:ring-2 focus:ring-secondary-sage/30 focus:border-secondary-sage transition-all text-[14px] resize-none disabled:opacity-60"
                       />
+                      {errors.message && (
+                        <p className="text-[11px] text-accent-terracotta mt-1">{errors.message[0]}</p>
+                      )}
                     </div>
 
                     <button
                       type="submit"
-                      className="w-full bg-accent-terracotta hover:bg-primary text-white font-semibold py-4 rounded-xl text-[14px] flex items-center justify-center gap-2 transition-all duration-300 hover:scale-[1.01] shadow-lg shadow-accent-terracotta/10"
+                      disabled={loading}
+                      className="w-full bg-accent-terracotta hover:bg-primary text-white font-semibold py-4 rounded-xl text-[14px] flex items-center justify-center gap-2 transition-all duration-300 hover:scale-[1.01] shadow-lg shadow-accent-terracotta/10 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      <Send size={15} />
-                      <span>Book Free Appointment</span>
+                      {loading ? (
+                        <RefreshCw size={15} className="animate-spin" />
+                      ) : (
+                        <Send size={15} />
+                      )}
+                      <span>{loading ? "Sending Enquiry..." : "Book Free Appointment"}</span>
                     </button>
                   </motion.form>
                 )}

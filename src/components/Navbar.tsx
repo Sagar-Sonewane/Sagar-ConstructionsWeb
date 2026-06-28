@@ -14,6 +14,7 @@ import {
   Grid,
   Landmark,
 } from "lucide-react";
+import { triggerAppointmentModal } from "@/components/FormModals";
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
@@ -175,13 +176,13 @@ export default function Navbar() {
 
           {/* Desktop CTA */}
           <div className="hidden lg:block">
-            <a
-              href="#contact"
-              className="inline-flex items-center gap-2 bg-primary text-white hover:bg-tertiary px-6 py-2.5 rounded-full text-[14px] font-medium transition-all duration-300 hover:scale-[1.03] shadow-md shadow-primary/5 hover:shadow-tertiary/10"
+            <button
+              onClick={triggerAppointmentModal}
+              className="inline-flex items-center gap-2 bg-primary text-white hover:bg-tertiary px-6 py-2.5 rounded-full text-[14px] font-medium transition-all duration-300 hover:scale-[1.03] shadow-md shadow-primary/5 hover:shadow-tertiary/10 cursor-pointer"
             >
               <PhoneCall size={15} />
               <span>Book Consultation</span>
-            </a>
+            </button>
           </div>
 
           {/* Mobile Menu Toggle */}
@@ -289,14 +290,13 @@ export default function Navbar() {
               </div>
 
               <div className="mt-8 shrink-0">
-                <a
-                  href="#contact"
-                  onClick={() => setIsOpen(false)}
-                  className="w-full justify-center inline-flex items-center gap-2 bg-primary text-white hover:bg-tertiary px-6 py-3 rounded-full text-[15px] font-semibold transition-all duration-300"
+                <button
+                  onClick={() => { setIsOpen(false); triggerAppointmentModal(); }}
+                  className="w-full justify-center inline-flex items-center gap-2 bg-primary text-white hover:bg-tertiary px-6 py-3 rounded-full text-[15px] font-semibold transition-all duration-300 cursor-pointer"
                 >
                   <PhoneCall size={16} />
                   <span>Free Consultation</span>
-                </a>
+                </button>
               </div>
             </motion.div>
           </>

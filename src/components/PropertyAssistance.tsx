@@ -1,17 +1,96 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { KeyRound, ShieldAlert, Send } from "lucide-react";
+import { KeyRound, ShieldAlert, Send, RefreshCw, Upload, FileText, X } from "lucide-react";
+import confetti from "canvas-confetti";
+import { submitBuyProperty, submitSellProperty } from "@/app/actions";
+import { showToastNotification } from "@/components/FormModals";
+import { MAX_FILE_SIZE, ALLOWED_FILE_TYPES } from "@/lib/validation/schemas";
 
 export default function PropertyAssistance() {
   const [activeTab, setActiveTab] = useState<"buy" | "sell">("buy");
   const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string[]>>({});
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const filesArray = Array.from(e.target.files);
+      const validFiles: File[] = [];
+      let hasError = false;
+
+      filesArray.forEach((file) => {
+        if (file.size > MAX_FILE_SIZE) {
+          showToastNotification(`File ${file.name} is too large. Max size is 5MB.`, "error");
+          hasError = true;
+          return;
+        }
+        if (!ALLOWED_FILE_TYPES.includes(file.type)) {
+          showToastNotification(`File ${file.name} must be a JPG, PNG, or WebP image.`, "error");
+          hasError = true;
+          return;
+        }
+        validFiles.push(file);
+      });
+
+      if (!hasError) {
+        setSelectedFiles((prev) => [...prev, ...validFiles]);
+      }
+    }
+  };
+
+  const removeFile = (index: number) => {
+    setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setSubmitted(true);
-    setTimeout(() => setSubmitted(false), 5000);
+    if (loading) return;
+    setLoading(true);
+    setErrors({});
+
+    const formData = new FormData(e.currentTarget);
+
+    try {
+      let res;
+      if (activeTab === "buy") {
+        res = await submitBuyProperty(null, formData);
+      } else {
+        formData.delete("images");
+        selectedFiles.forEach((file) => {
+          formData.append("images", file);
+        });
+        res = await submitSellProperty(null, formData);
+      }
+
+      if (res.success) {
+        setSubmitted(true);
+        confetti({
+          particleCount: 80,
+          spread: 60,
+          origin: { y: 0.8 },
+          colors: ["#1c3d3a", "#5a7d75", "#c68a6b", "#eae5dc"],
+        });
+        showToastNotification(
+          activeTab === "buy"
+            ? "Requirements submitted successfully!"
+            : "Property listing submitted successfully!",
+          "success"
+        );
+      } else if (res.errors) {
+        setErrors(res.errors);
+        showToastNotification("Please correct the errors in the form.", "error");
+      } else {
+        showToastNotification(res.message || "Failed to process request.", "error");
+      }
+    } catch (err) {
+      showToastNotification("Network connection error. Please try again.", "error");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -48,16 +127,16 @@ export default function PropertyAssistance() {
               {/* Tab Selector */}
               <div className="flex bg-bg-cream p-1.5 rounded-full mb-8 max-w-[280px]">
                 <button
-                  onClick={() => { setActiveTab("buy"); setSubmitted(false); }}
-                  className={`flex-1 py-2.5 rounded-full text-[14px] font-semibold tracking-wide transition-all duration-300 ${
+                  onClick={() => { setActiveTab("buy"); setSubmitted(false); setErrors({}); setSelectedFiles([]); }}
+                  className={`flex-1 py-2.5 rounded-full text-[14px] font-semibold tracking-wide transition-all duration-300 cursor-pointer ${
                     activeTab === "buy" ? "bg-primary text-white" : "text-text-charcoal/70 hover:text-primary"
                   }`}
                 >
                   I Want to Buy
                 </button>
                 <button
-                  onClick={() => { setActiveTab("sell"); setSubmitted(false); }}
-                  className={`flex-1 py-2.5 rounded-full text-[14px] font-semibold tracking-wide transition-all duration-300 ${
+                  onClick={() => { setActiveTab("sell"); setSubmitted(false); setErrors({}); setSelectedFiles([]); }}
+                  className={`flex-1 py-2.5 rounded-full text-[14px] font-semibold tracking-wide transition-all duration-300 cursor-pointer ${
                     activeTab === "sell" ? "bg-primary text-white" : "text-text-charcoal/70 hover:text-primary"
                   }`}
                 >
@@ -82,6 +161,12 @@ export default function PropertyAssistance() {
                     <p className="font-body text-[14px] text-text-charcoal/70 max-w-sm mx-auto">
                       Thank you. A friendly team member from Sagar Constructions will reach out to you within 24 hours to discuss details.
                     </p>
+                    <button
+                      onClick={() => { setSubmitted(false); setSelectedFiles([]); }}
+                      className="mt-6 bg-primary hover:bg-tertiary text-white px-6 py-2.5 rounded-full text-[13px] font-semibold transition-all duration-300"
+                    >
+                      Submit Another Request
+                    </button>
                   </motion.div>
                 ) : (
                   <motion.form
@@ -93,6 +178,15 @@ export default function PropertyAssistance() {
                     onSubmit={handleSubmit}
                     className="space-y-5"
                   >
+                    {/* Honeypot Spam Protection */}
+                    <input
+                      type="text"
+                      name="website"
+                      className="hidden"
+                      style={{ display: "none" }}
+                      tabIndex={-1}
+                      autoComplete="off"
+                    />
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-[13px] font-semibold text-text-charcoal/80 mb-2">
@@ -100,56 +194,267 @@ export default function PropertyAssistance() {
                         </label>
                         <input
                           type="text"
+                          name="fullName"
                           required
+                          disabled={loading}
                           placeholder="e.g. Rahul Sharma"
-                          className="w-full px-4 py-3 rounded-xl bg-bg-cream border border-outline focus:outline-none focus:ring-2 focus:ring-secondary-sage/30 focus:border-secondary-sage transition-all text-[14px]"
+                          className="w-full px-4 py-3 rounded-xl bg-bg-cream border border-outline focus:outline-none focus:ring-2 focus:ring-secondary-sage/30 focus:border-secondary-sage transition-all text-[14px] disabled:opacity-60"
                         />
+                        {errors.fullName && (
+                          <p className="text-[11px] text-accent-terracotta mt-1">{errors.fullName[0]}</p>
+                        )}
                       </div>
                       <div>
                         <label className="block text-[13px] font-semibold text-text-charcoal/80 mb-2">
                           Phone Number
                         </label>
                         <input
-                          type="tel"
+                          type="text"
+                          name="phone"
                           required
-                          placeholder="e.g. 98765 43210"
-                          className="w-full px-4 py-3 rounded-xl bg-bg-cream border border-outline focus:outline-none focus:ring-2 focus:ring-secondary-sage/30 focus:border-secondary-sage transition-all text-[14px]"
+                          disabled={loading}
+                          placeholder="e.g. 9876543210"
+                          className="w-full px-4 py-3 rounded-xl bg-bg-cream border border-outline focus:outline-none focus:ring-2 focus:ring-secondary-sage/30 focus:border-secondary-sage transition-all text-[14px] disabled:opacity-60"
                         />
+                        {errors.phone && (
+                          <p className="text-[11px] text-accent-terracotta mt-1">{errors.phone[0]}</p>
+                        )}
                       </div>
                     </div>
 
-                    <div>
-                      <label className="block text-[13px] font-semibold text-text-charcoal/80 mb-2">
-                        Preferred Location / Area in Bhandara
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        placeholder="e.g. Trimurti Nagar, Khat Road"
-                        className="w-full px-4 py-3 rounded-xl bg-bg-cream border border-outline focus:outline-none focus:ring-2 focus:ring-secondary-sage/30 focus:border-secondary-sage transition-all text-[14px]"
-                      />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-[13px] font-semibold text-text-charcoal/80 mb-2">
+                          Email Address (Optional)
+                        </label>
+                        <input
+                          type="email"
+                          name="email"
+                          disabled={loading}
+                          placeholder="e.g. rahul@gmail.com"
+                          className="w-full px-4 py-3 rounded-xl bg-bg-cream border border-outline focus:outline-none focus:ring-2 focus:ring-secondary-sage/30 focus:border-secondary-sage transition-all text-[14px] disabled:opacity-60"
+                        />
+                        {errors.email && (
+                          <p className="text-[11px] text-accent-terracotta mt-1">{errors.email[0]}</p>
+                        )}
+                      </div>
+                      <div>
+                        <label className="block text-[13px] font-semibold text-text-charcoal/80 mb-2">
+                          Property Type
+                        </label>
+                        <select
+                          name="propertyType"
+                          required
+                          disabled={loading}
+                          className="w-full px-4 py-3 rounded-xl bg-bg-cream border border-outline focus:outline-none focus:ring-2 focus:ring-secondary-sage/30 focus:border-secondary-sage transition-all text-[14px] disabled:opacity-60 cursor-pointer"
+                        >
+                          <option value="Plot / Land">Plot / Land</option>
+                          <option value="House / Villa">House / Villa</option>
+                          <option value="Apartment / Flat">Apartment / Flat</option>
+                          <option value="Commercial Property">Commercial Property</option>
+                          <option value="Other">Other</option>
+                        </select>
+                      </div>
                     </div>
 
-                    <div>
-                      <label className="block text-[13px] font-semibold text-text-charcoal/80 mb-2">
-                        {activeTab === "buy"
-                          ? "Budget & Property Preferences (e.g. 3 BHK House, Plot Size)"
-                          : "Property Details (e.g. Plot dimensions, House Age, Expected Price)"}
-                      </label>
-                      <textarea
-                        rows={4}
-                        required
-                        placeholder="Please share specific requirements so we can assist you better."
-                        className="w-full px-4 py-3 rounded-xl bg-bg-cream border border-outline focus:outline-none focus:ring-2 focus:ring-secondary-sage/30 focus:border-secondary-sage transition-all text-[14px] resize-none"
-                      />
-                    </div>
+                    {activeTab === "buy" ? (
+                      <>
+                        <div>
+                          <label className="block text-[13px] font-semibold text-text-charcoal/80 mb-2">
+                            Preferred Location / Area in Bhandara
+                          </label>
+                          <input
+                            type="text"
+                            name="preferredLocation"
+                            required
+                            disabled={loading}
+                            placeholder="e.g. Trimurti Nagar, Khat Road"
+                            className="w-full px-4 py-3 rounded-xl bg-bg-cream border border-outline focus:outline-none focus:ring-2 focus:ring-secondary-sage/30 focus:border-secondary-sage transition-all text-[14px] disabled:opacity-60"
+                          />
+                          {errors.preferredLocation && (
+                            <p className="text-[11px] text-accent-terracotta mt-1">{errors.preferredLocation[0]}</p>
+                          )}
+                        </div>
+
+                        <div>
+                          <label className="block text-[13px] font-semibold text-text-charcoal/80 mb-2">
+                            Budget Range (e.g. 25-30 Lakhs)
+                          </label>
+                          <input
+                            type="text"
+                            name="budget"
+                            required
+                            disabled={loading}
+                            placeholder="e.g. 30 Lakhs"
+                            className="w-full px-4 py-3 rounded-xl bg-bg-cream border border-outline focus:outline-none focus:ring-2 focus:ring-secondary-sage/30 focus:border-secondary-sage transition-all text-[14px] disabled:opacity-60"
+                          />
+                          {errors.budget && (
+                            <p className="text-[11px] text-accent-terracotta mt-1">{errors.budget[0]}</p>
+                          )}
+                        </div>
+
+                        <div>
+                          <label className="block text-[13px] font-semibold text-text-charcoal/80 mb-2">
+                            Specific Requirements & Preferences
+                          </label>
+                          <textarea
+                            rows={4}
+                            name="requirements"
+                            required
+                            disabled={loading}
+                            placeholder="Please share specific requirements (e.g. facing direction, road width, configuration) so we can assist you better."
+                            className="w-full px-4 py-3 rounded-xl bg-bg-cream border border-outline focus:outline-none focus:ring-2 focus:ring-secondary-sage/30 focus:border-secondary-sage transition-all text-[14px] resize-none disabled:opacity-60"
+                          />
+                          {errors.requirements && (
+                            <p className="text-[11px] text-accent-terracotta mt-1">{errors.requirements[0]}</p>
+                          )}
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div>
+                          <label className="block text-[13px] font-semibold text-text-charcoal/80 mb-2">
+                            Property Location in Bhandara
+                          </label>
+                          <input
+                            type="text"
+                            name="propertyLocation"
+                            required
+                            disabled={loading}
+                            placeholder="e.g. Khat Road, near Main Market"
+                            className="w-full px-4 py-3 rounded-xl bg-bg-cream border border-outline focus:outline-none focus:ring-2 focus:ring-secondary-sage/30 focus:border-secondary-sage transition-all text-[14px] disabled:opacity-60"
+                          />
+                          {errors.propertyLocation && (
+                            <p className="text-[11px] text-accent-terracotta mt-1">{errors.propertyLocation[0]}</p>
+                          )}
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-[13px] font-semibold text-text-charcoal/80 mb-2">
+                              Property Size / Area (e.g. 1500 sqft)
+                            </label>
+                            <input
+                              type="text"
+                              name="area"
+                              required
+                              disabled={loading}
+                              placeholder="e.g. 30x50 ft or 1500 sqft"
+                              className="w-full px-4 py-3 rounded-xl bg-bg-cream border border-outline focus:outline-none focus:ring-2 focus:ring-secondary-sage/30 focus:border-secondary-sage transition-all text-[14px] disabled:opacity-60"
+                            />
+                            {errors.area && (
+                              <p className="text-[11px] text-accent-terracotta mt-1">{errors.area[0]}</p>
+                            )}
+                          </div>
+                          <div>
+                            <label className="block text-[13px] font-semibold text-text-charcoal/80 mb-2">
+                              Expected Price
+                            </label>
+                            <input
+                              type="text"
+                              name="expectedPrice"
+                              required
+                              disabled={loading}
+                              placeholder="e.g. 45 Lakhs"
+                              className="w-full px-4 py-3 rounded-xl bg-bg-cream border border-outline focus:outline-none focus:ring-2 focus:ring-secondary-sage/30 focus:border-secondary-sage transition-all text-[14px] disabled:opacity-60"
+                            />
+                            {errors.expectedPrice && (
+                              <p className="text-[11px] text-accent-terracotta mt-1">{errors.expectedPrice[0]}</p>
+                            )}
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-[13px] font-semibold text-text-charcoal/80 mb-2">
+                            Property Description & Details
+                          </label>
+                          <textarea
+                            rows={3}
+                            name="propertyDescription"
+                            required
+                            disabled={loading}
+                            placeholder="Please share house details, construction age, legal paperwork status, etc."
+                            className="w-full px-4 py-3 rounded-xl bg-bg-cream border border-outline focus:outline-none focus:ring-2 focus:ring-secondary-sage/30 focus:border-secondary-sage transition-all text-[14px] resize-none disabled:opacity-60"
+                          />
+                          {errors.propertyDescription && (
+                            <p className="text-[11px] text-accent-terracotta mt-1">{errors.propertyDescription[0]}</p>
+                          )}
+                        </div>
+
+                        {/* Image Upload Area */}
+                        <div>
+                          <label className="block text-[13px] font-semibold text-text-charcoal/80 mb-2 flex items-center justify-between">
+                            <span>Upload Property Photos (Optional)</span>
+                            <span className="text-[11px] text-text-charcoal/50">Max 5MB each, Images only</span>
+                          </label>
+
+                          <div
+                            onClick={() => !loading && fileInputRef.current?.click()}
+                            className="border-2 border-dashed border-outline/40 hover:border-secondary-sage/60 rounded-2xl p-6 text-center cursor-pointer bg-bg-cream transition-colors flex flex-col items-center justify-center gap-2 group disabled:opacity-50"
+                          >
+                            <input
+                              type="file"
+                              ref={fileInputRef}
+                              name="images"
+                              multiple
+                              accept="image/*"
+                              onChange={handleFileChange}
+                              disabled={loading}
+                              className="hidden"
+                            />
+                            <Upload size={22} className="text-text-charcoal/40 group-hover:text-secondary-sage transition-colors" />
+                            <span className="text-[13px] font-semibold text-text-charcoal/70">
+                              Click to upload property images
+                            </span>
+                          </div>
+
+                          {selectedFiles.length > 0 && (
+                            <div className="mt-3 space-y-1.5 max-h-[120px] overflow-y-auto pr-1">
+                              {selectedFiles.map((file, index) => (
+                                <div
+                                  key={index}
+                                  className="flex items-center justify-between bg-surface border border-outline/35 rounded-xl px-3 py-2 text-[12px]"
+                                >
+                                  <div className="flex items-center gap-2 text-text-charcoal/80 max-w-[85%]">
+                                    <FileText size={14} className="text-secondary-sage shrink-0" />
+                                    <span className="truncate font-semibold">{file.name}</span>
+                                    <span className="text-text-charcoal/40 shrink-0">
+                                      ({(file.size / (1024 * 1024)).toFixed(2)} MB)
+                                    </span>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    disabled={loading}
+                                    onClick={() => removeFile(index)}
+                                    className="text-accent-terracotta hover:text-red-700 font-bold p-1 disabled:opacity-50 cursor-pointer"
+                                  >
+                                    <X size={14} />
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </>
+                    )}
 
                     <button
                       type="submit"
-                      className="w-full bg-primary hover:bg-tertiary text-white font-semibold py-4 rounded-xl text-[14px] flex items-center justify-center gap-2 transition-all duration-300 hover:scale-[1.01]"
+                      disabled={loading}
+                      className="w-full bg-primary hover:bg-tertiary text-white font-semibold py-4 rounded-xl text-[14px] flex items-center justify-center gap-2 transition-all duration-300 hover:scale-[1.01] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                     >
-                      <Send size={15} />
-                      <span>Submit Details Confidentially</span>
+                      {loading ? (
+                        <RefreshCw size={15} className="animate-spin" />
+                      ) : (
+                        <Send size={15} />
+                      )}
+                      <span>
+                        {loading
+                          ? "Submitting Details..."
+                          : activeTab === "buy"
+                          ? "Submit Buying Requirements"
+                          : "Submit Property for Sale"}
+                      </span>
                     </button>
                   </motion.form>
                 )}
