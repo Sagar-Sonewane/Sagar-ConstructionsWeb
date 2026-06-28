@@ -261,7 +261,7 @@ export default function FormModals() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
               transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-              className="relative w-full max-w-2xl bg-bg-cream rounded-[28px] border border-outline/35 shadow-2xl p-6 md:p-8 overflow-y-auto max-h-[90vh] z-10"
+              className="relative w-full max-w-2xl bg-bg-cream rounded-[28px] border border-outline/35 shadow-2xl p-6 md:p-8 overflow-y-auto max-h-[90vh] z-10 custom-scrollbar"
             >
               <button
                 disabled={appLoading}
@@ -499,7 +499,7 @@ export default function FormModals() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
               transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-              className="relative w-full max-w-2xl bg-bg-cream rounded-[28px] border border-outline/35 shadow-2xl p-6 md:p-8 overflow-y-auto max-h-[90vh] z-10"
+              className="relative w-full max-w-2xl bg-bg-cream rounded-[28px] border border-outline/35 shadow-2xl p-6 md:p-8 overflow-y-auto max-h-[90vh] z-10 custom-scrollbar"
             >
               <button
                 disabled={quoteLoading}
