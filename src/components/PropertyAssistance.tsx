@@ -1,12 +1,112 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { KeyRound, ShieldAlert, Send, RefreshCw, Upload, FileText, X } from "lucide-react";
+import { KeyRound, ShieldAlert, Send, RefreshCw, Upload, FileText, X, ChevronDown } from "lucide-react";
 import confetti from "canvas-confetti";
 import { submitBuyProperty, submitSellProperty } from "@/app/actions";
 import { showToastNotification } from "@/components/FormModals";
 import { MAX_FILE_SIZE, ALLOWED_FILE_TYPES } from "@/lib/validation/schemas";
+
+// Custom Select component for styled options
+interface CustomSelectProps {
+  name: string;
+  options: string[];
+  defaultValue?: string;
+  value?: string;
+  onChange?: (val: string) => void;
+  disabled?: boolean;
+  className?: string;
+  bgClass?: string;
+}
+
+function CustomSelect({
+  name,
+  options,
+  defaultValue,
+  value,
+  onChange,
+  disabled,
+  className = "",
+  bgClass = "bg-surface",
+}: CustomSelectProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [selectedValue, setSelectedValue] = useState(value || defaultValue || options[0]);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (value !== undefined) {
+      setSelectedValue(value);
+    }
+  }, [value]);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleSelect = (option: string) => {
+    setSelectedValue(option);
+    setIsOpen(false);
+    if (onChange) {
+      onChange(option);
+    }
+  };
+
+  return (
+    <div className={`relative ${className}`} ref={dropdownRef}>
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => setIsOpen(!isOpen)}
+        className={`w-full px-4 py-3 rounded-xl ${bgClass} border border-outline focus:outline-none focus:ring-2 focus:ring-secondary-sage/30 focus:border-secondary-sage transition-all text-[14px] text-text-charcoal/80 cursor-pointer flex items-center justify-between text-left disabled:opacity-60`}
+      >
+        <span>{selectedValue}</span>
+        <motion.span
+          animate={{ rotate: isOpen ? 180 : 0 }}
+          transition={{ duration: 0.2 }}
+          className="text-text-charcoal/50"
+        >
+          <ChevronDown size={16} />
+        </motion.span>
+      </button>
+
+      <input type="hidden" name={name} value={selectedValue} />
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: 5 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 5 }}
+            transition={{ duration: 0.2 }}
+            className="absolute z-50 left-0 right-0 top-full mt-2 bg-bg-cream border border-outline/35 rounded-xl shadow-xl p-2 space-y-1 max-h-[220px] overflow-y-auto custom-scrollbar"
+          >
+            {options.map((option) => (
+              <button
+                key={option}
+                type="button"
+                onClick={() => handleSelect(option)}
+                className={`w-full text-left px-3 py-2 rounded-lg text-[13px] transition-colors ${
+                  selectedValue === option
+                    ? "bg-surface-container font-semibold text-primary"
+                    : "text-text-charcoal/80 hover:bg-surface-container hover:text-primary"
+                }`}
+              >
+                {option}
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
 
 export default function PropertyAssistance() {
   const [activeTab, setActiveTab] = useState<"buy" | "sell">("buy");
@@ -242,18 +342,18 @@ export default function PropertyAssistance() {
                         <label className="block text-[13px] font-semibold text-text-charcoal/80 mb-2">
                           Property Type
                         </label>
-                        <select
+                        <CustomSelect
                           name="propertyType"
-                          required
                           disabled={loading}
-                          className="w-full px-4 py-3 rounded-xl bg-bg-cream border border-outline focus:outline-none focus:ring-2 focus:ring-secondary-sage/30 focus:border-secondary-sage transition-all text-[14px] disabled:opacity-60 cursor-pointer"
-                        >
-                          <option value="Plot / Land">Plot / Land</option>
-                          <option value="House / Villa">House / Villa</option>
-                          <option value="Apartment / Flat">Apartment / Flat</option>
-                          <option value="Commercial Property">Commercial Property</option>
-                          <option value="Other">Other</option>
-                        </select>
+                          bgClass="bg-bg-cream"
+                          options={[
+                            "Plot / Land",
+                            "House / Villa",
+                            "Apartment / Flat",
+                            "Commercial Property",
+                            "Other"
+                          ]}
+                        />
                       </div>
                     </div>
 

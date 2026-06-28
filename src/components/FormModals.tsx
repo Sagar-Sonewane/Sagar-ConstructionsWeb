@@ -2,10 +2,110 @@
 
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Calendar, Clock, MapPin, Upload, FileText, Send, CheckCircle, AlertCircle, RefreshCw } from "lucide-react";
+import { X, Calendar, Clock, MapPin, Upload, FileText, Send, CheckCircle, AlertCircle, RefreshCw, ChevronDown } from "lucide-react";
 import confetti from "canvas-confetti";
 import { submitAppointmentBooking, submitQuotationRequest } from "@/app/actions";
 import { MAX_FILE_SIZE, ALLOWED_FILE_TYPES } from "@/lib/validation/schemas";
+
+// Reusable Custom Select component for styled options
+interface CustomSelectProps {
+  name: string;
+  options: string[];
+  defaultValue?: string;
+  value?: string;
+  onChange?: (val: string) => void;
+  disabled?: boolean;
+  className?: string;
+  bgClass?: string;
+}
+
+function CustomSelect({
+  name,
+  options,
+  defaultValue,
+  value,
+  onChange,
+  disabled,
+  className = "",
+  bgClass = "bg-surface",
+}: CustomSelectProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [selectedValue, setSelectedValue] = useState(value || defaultValue || options[0]);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (value !== undefined) {
+      setSelectedValue(value);
+    }
+  }, [value]);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleSelect = (option: string) => {
+    setSelectedValue(option);
+    setIsOpen(false);
+    if (onChange) {
+      onChange(option);
+    }
+  };
+
+  return (
+    <div className={`relative ${className}`} ref={dropdownRef}>
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => setIsOpen(!isOpen)}
+        className={`w-full px-4 py-3 rounded-xl ${bgClass} border border-outline focus:outline-none focus:ring-2 focus:ring-secondary-sage/30 focus:border-secondary-sage transition-all text-[14px] text-text-charcoal/80 cursor-pointer flex items-center justify-between text-left disabled:opacity-60`}
+      >
+        <span>{selectedValue}</span>
+        <motion.span
+          animate={{ rotate: isOpen ? 180 : 0 }}
+          transition={{ duration: 0.2 }}
+          className="text-text-charcoal/50"
+        >
+          <ChevronDown size={16} />
+        </motion.span>
+      </button>
+
+      <input type="hidden" name={name} value={selectedValue} />
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: 5 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 5 }}
+            transition={{ duration: 0.2 }}
+            className="absolute z-50 left-0 right-0 top-full mt-2 bg-bg-cream border border-outline/35 rounded-xl shadow-xl p-2 space-y-1 max-h-[220px] overflow-y-auto custom-scrollbar"
+          >
+            {options.map((option) => (
+              <button
+                key={option}
+                type="button"
+                onClick={() => handleSelect(option)}
+                className={`w-full text-left px-3 py-2 rounded-lg text-[13px] transition-colors ${
+                  selectedValue === option
+                    ? "bg-surface-container font-semibold text-primary"
+                    : "text-text-charcoal/80 hover:bg-surface-container hover:text-primary"
+                }`}
+              >
+                {option}
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
 
 // Reusable Toast Component definition
 interface Toast {
@@ -378,19 +478,12 @@ export default function FormModals() {
                           <label className="block text-[12px] font-bold text-text-charcoal/80 mb-1.5">
                             Selected Service
                           </label>
-                          <select
+                          <CustomSelect
                             name="selectedService"
-                            required
                             disabled={appLoading}
                             defaultValue="Residential Construction"
-                            className="w-full px-4 py-3 rounded-xl bg-surface border border-outline focus:outline-none focus:ring-2 focus:ring-secondary-sage/30 focus:border-secondary-sage transition-all text-[14px] disabled:opacity-60 cursor-pointer"
-                          >
-                            {services.map((s) => (
-                              <option key={s} value={s}>
-                                {s}
-                              </option>
-                            ))}
-                          </select>
+                            options={services}
+                          />
                         </div>
                       </div>
 
@@ -417,17 +510,17 @@ export default function FormModals() {
                             <Clock size={14} className="text-secondary-sage" />
                             <span>Preferred Time</span>
                           </label>
-                          <select
+                          <CustomSelect
                             name="preferredTime"
-                            required
                             disabled={appLoading}
-                            className="w-full px-4 py-3 rounded-xl bg-surface border border-outline focus:outline-none focus:ring-2 focus:ring-secondary-sage/30 focus:border-secondary-sage transition-all text-[14px] disabled:opacity-60 cursor-pointer"
-                          >
-                            <option value="Morning (9 AM - 12 PM)">Morning (9 AM - 12 PM)</option>
-                            <option value="Afternoon (12 PM - 3 PM)">Afternoon (12 PM - 3 PM)</option>
-                            <option value="Evening (3 PM - 6 PM)">Evening (3 PM - 6 PM)</option>
-                            <option value="Late Evening (6 PM - 7 PM)">Late Evening (6 PM - 7 PM)</option>
-                          </select>
+                            defaultValue="Morning (9 AM - 12 PM)"
+                            options={[
+                              "Morning (9 AM - 12 PM)",
+                              "Afternoon (12 PM - 3 PM)",
+                              "Evening (3 PM - 6 PM)",
+                              "Late Evening (6 PM - 7 PM)"
+                            ]}
+                          />
                         </div>
                       </div>
 
@@ -616,20 +709,13 @@ export default function FormModals() {
                           <label className="block text-[12px] font-bold text-text-charcoal/80 mb-1.5">
                             Service Category
                           </label>
-                          <select
+                          <CustomSelect
                             name="service"
-                            required
                             disabled={quoteLoading}
                             value={prefilledService}
-                            onChange={(e) => setPrefilledService(e.target.value)}
-                            className="w-full px-4 py-3 rounded-xl bg-surface border border-outline focus:outline-none focus:ring-2 focus:ring-secondary-sage/30 focus:border-secondary-sage transition-all text-[14px] disabled:opacity-60 cursor-pointer"
-                          >
-                            {services.map((s) => (
-                              <option key={s} value={s}>
-                                {s}
-                              </option>
-                            ))}
-                          </select>
+                            onChange={setPrefilledService}
+                            options={services}
+                          />
                         </div>
                       </div>
 
