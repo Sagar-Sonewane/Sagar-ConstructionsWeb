@@ -2,19 +2,53 @@
 
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Phone, Mail, Clock, MapPin, Send, MessageSquare, ChevronDown, RefreshCw } from "lucide-react";
+import { Phone, Mail, Clock, MapPin, Send, MessageSquare, ChevronDown, RefreshCw, Upload, FileText, X } from "lucide-react";
 import confetti from "canvas-confetti";
 import { submitContactForm } from "@/app/actions";
 import { showToastNotification } from "@/components/FormModals";
+import { MAX_FILE_SIZE, ALLOWED_FILE_TYPES } from "@/lib/validation/schemas";
+
 
 export default function Contact() {
   const [submitted, setSubmitted] = useState(false);
   const [isSelectOpen, setIsSelectOpen] = useState(false);
   const [selectedService, setSelectedService] = useState("New Home Construction");
   const dropdownRef = useRef<HTMLDivElement>(null);
-  
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string[]>>({});
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const filesArray = Array.from(e.target.files);
+      const validFiles: File[] = [];
+      let hasError = false;
+
+      filesArray.forEach((file) => {
+        if (file.size > MAX_FILE_SIZE) {
+          showToastNotification(`File ${file.name} is too large. Max size is 5MB.`, "error");
+          hasError = true;
+          return;
+        }
+        if (!ALLOWED_FILE_TYPES.includes(file.type)) {
+          showToastNotification(`File ${file.name} must be a JPEG, PNG, or WebP image.`, "error");
+          hasError = true;
+          return;
+        }
+        validFiles.push(file);
+      });
+
+      if (!hasError) {
+        setSelectedFiles((prev) => [...prev, ...validFiles]);
+      }
+    }
+  };
+
+  const removeFile = (index: number) => {
+    setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
 
   const servicesList = [
     "New Home Construction",
@@ -32,10 +66,18 @@ export default function Contact() {
     setErrors({});
 
     const formData = new FormData(e.currentTarget);
+    
+    // Append files
+    formData.delete("images");
+    selectedFiles.forEach((file) => {
+      formData.append("images", file);
+    });
+
     try {
       const res = await submitContactForm(null, formData);
       if (res.success) {
         setSubmitted(true);
+        setSelectedFiles([]); // Reset files
         confetti({
           particleCount: 80,
           spread: 60,
@@ -323,6 +365,59 @@ export default function Contact() {
                         <p className="text-[11px] text-accent-terracotta mt-1">{errors.message[0]}</p>
                       )}
                     </div>
+
+                    {/* Image Upload Area */}
+                    <div>
+                      <label className="block text-[13px] font-semibold text-text-charcoal/80 mb-2 flex items-center justify-between">
+                        <span>Attach Layout Drawings or Site Images (Optional)</span>
+                        <span className="text-[11px] text-text-charcoal/50">Max 5MB each, Images only</span>
+                      </label>
+
+                      <div
+                        onClick={() => !loading && fileInputRef.current?.click()}
+                        className="border-2 border-dashed border-outline/40 hover:border-secondary-sage/60 rounded-2xl p-6 text-center cursor-pointer bg-surface/50 transition-colors flex flex-col items-center justify-center gap-2 group disabled:opacity-50"
+                      >
+                        <input
+                          type="file"
+                          ref={fileInputRef}
+                          name="images"
+                          multiple
+                          accept="image/*"
+                          onChange={handleFileChange}
+                          disabled={loading}
+                          className="hidden"
+                        />
+                        <Upload size={22} className="text-text-charcoal/40 group-hover:text-secondary-sage transition-colors" />
+                        <span className="text-[13px] font-semibold text-text-charcoal/70">
+                          Click to upload images
+                        </span>
+                        <span className="text-[11px] text-text-charcoal/40">
+                          Supports JPEG, PNG, WebP, GIF
+                        </span>
+                      </div>
+
+                      {selectedFiles.length > 0 && (
+                        <div className="mt-3 space-y-2">
+                          {selectedFiles.map((file, idx) => (
+                            <div key={idx} className="flex items-center justify-between bg-surface p-2.5 rounded-xl border border-outline/30 text-[12px]">
+                              <div className="flex items-center gap-2 truncate">
+                                <FileText size={14} className="text-secondary-sage shrink-0" />
+                                <span className="truncate text-text-charcoal/80 font-medium">{file.name}</span>
+                                <span className="text-[10px] text-text-charcoal/40">({(file.size / 1024 / 1024).toFixed(2)} MB)</span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => removeFile(idx)}
+                                className="text-accent-terracotta hover:text-primary transition-colors p-1"
+                              >
+                                <X size={14} />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
 
                     <button
                       type="submit"

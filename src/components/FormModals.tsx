@@ -177,6 +177,38 @@ export default function FormModals() {
   const [appLoading, setAppLoading] = useState(false);
   const [appSubmitted, setAppSubmitted] = useState(false);
   const [appErrors, setAppErrors] = useState<Record<string, string[]>>({});
+  const [appSelectedFiles, setAppSelectedFiles] = useState<File[]>([]);
+  const appFileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleAppFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const filesArray = Array.from(e.target.files);
+      const validFiles: File[] = [];
+      let hasError = false;
+
+      filesArray.forEach((file) => {
+        if (file.size > MAX_FILE_SIZE) {
+          showToast(`File ${file.name} is too large. Max size is 5MB.`, "error");
+          hasError = true;
+          return;
+        }
+        if (!ALLOWED_FILE_TYPES.includes(file.type)) {
+          showToast(`File ${file.name} must be a JPEG, PNG, or WebP image.`, "error");
+          hasError = true;
+          return;
+        }
+        validFiles.push(file);
+      });
+
+      if (!hasError) {
+        setAppSelectedFiles((prev) => [...prev, ...validFiles]);
+      }
+    }
+  };
+
+  const removeAppFile = (index: number) => {
+    setAppSelectedFiles((prev) => prev.filter((_, i) => i !== index));
+  };
 
   // Form State: Quotation
   const [quoteLoading, setQuoteLoading] = useState(false);
@@ -203,6 +235,7 @@ export default function FormModals() {
       setAppointmentOpen(true);
       setAppSubmitted(false);
       setAppErrors({});
+      setAppSelectedFiles([]);
     };
 
     const handleOpenQuote = (e: Event) => {
@@ -251,10 +284,16 @@ export default function FormModals() {
     setAppErrors({});
 
     const formData = new FormData(e.currentTarget);
+    formData.delete("images");
+    appSelectedFiles.forEach((file) => {
+      formData.append("images", file);
+    });
+
     try {
       const res = await submitAppointmentBooking(null, formData);
       if (res.success) {
         setAppSubmitted(true);
+        setAppSelectedFiles([]);
         triggerConfetti();
         showToast("Appointment consultation booked successfully!", "success");
       } else if (res.errors) {
@@ -554,6 +593,59 @@ export default function FormModals() {
                           className="w-full px-4 py-3 rounded-xl bg-surface border border-outline focus:outline-none focus:ring-2 focus:ring-secondary-sage/30 focus:border-secondary-sage transition-all text-[14px] resize-none disabled:opacity-60"
                         />
                       </div>
+
+                      {/* Image Upload Area */}
+                      <div>
+                        <label className="block text-[12px] font-bold text-text-charcoal/80 mb-1.5 flex items-center justify-between">
+                          <span>Attach Layout Drawings or Site Images (Optional)</span>
+                          <span className="text-[11px] text-text-charcoal/50">Max 5MB each, Images only</span>
+                        </label>
+
+                        <div
+                          onClick={() => !appLoading && appFileInputRef.current?.click()}
+                          className="border-2 border-dashed border-outline/40 hover:border-secondary-sage/60 rounded-2xl p-6 text-center cursor-pointer bg-surface/50 transition-colors flex flex-col items-center justify-center gap-2 group disabled:opacity-50"
+                        >
+                          <input
+                            type="file"
+                            ref={appFileInputRef}
+                            name="images"
+                            multiple
+                            accept="image/*"
+                            onChange={handleAppFileChange}
+                            disabled={appLoading}
+                            className="hidden"
+                          />
+                          <Upload size={22} className="text-text-charcoal/40 group-hover:text-secondary-sage transition-colors" />
+                          <span className="text-[13px] font-semibold text-text-charcoal/70">
+                            Click to upload images
+                          </span>
+                          <span className="text-[11px] text-text-charcoal/40">
+                            Supports JPEG, PNG, WebP, GIF
+                          </span>
+                        </div>
+
+                        {appSelectedFiles.length > 0 && (
+                          <div className="mt-3 space-y-2">
+                            {appSelectedFiles.map((file, idx) => (
+                              <div key={idx} className="flex items-center justify-between bg-surface p-2.5 rounded-xl border border-outline/30 text-[12px]">
+                                <div className="flex items-center gap-2 truncate">
+                                  <FileText size={14} className="text-secondary-sage shrink-0" />
+                                  <span className="truncate text-text-charcoal/80 font-medium">{file.name}</span>
+                                  <span className="text-[10px] text-text-charcoal/40">({(file.size / 1024 / 1024).toFixed(2)} MB)</span>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => removeAppFile(idx)}
+                                  className="text-accent-terracotta hover:text-primary transition-colors p-1"
+                                >
+                                  <X size={14} />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
 
                       <button
                         type="submit"

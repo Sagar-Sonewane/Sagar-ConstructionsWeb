@@ -142,10 +142,12 @@ export async function submitContactForm(prevState: any, formData: FormData) {
 
     const { fullName, phone, email, serviceInterested, message } = validated.data;
     const db = getSupabaseAdmin();
+    const requestId = crypto.randomUUID();
 
     const { error } = await db
       .from("contact_requests")
       .insert({
+        id: requestId,
         full_name: fullName,
         phone,
         email,
@@ -155,15 +157,23 @@ export async function submitContactForm(prevState: any, formData: FormData) {
 
     if (error) throw error;
 
+    // Handle File Uploads
+    const files = formData.getAll("images") as File[];
+    let uploadedUrls: string[] = [];
+    if (files.length > 0 && files[0].size > 0) {
+      uploadedUrls = await uploadFiles(requestId, "contact", "quotation-images", files);
+    }
+
     // Send Notification Email
     await sendNotificationEmail({
-      type: "Contact Inquiry",
+      type: "Contact Inquiry / Consultation Request",
       name: fullName,
       phone,
       email,
       details: {
         "Service Interested": serviceInterested,
         "Message": message,
+        "Uploaded Attachments": uploadedUrls.length > 0 ? uploadedUrls.join(", ") : "None",
       },
     });
 
@@ -216,10 +226,12 @@ export async function submitAppointmentBooking(prevState: any, formData: FormDat
 
     const dataObj = validated.data;
     const db = getSupabaseAdmin();
+    const requestId = crypto.randomUUID();
 
     const { error } = await db
       .from("appointments")
       .insert({
+        id: requestId,
         full_name: dataObj.fullName,
         phone: dataObj.phone,
         email: dataObj.email,
@@ -231,6 +243,13 @@ export async function submitAppointmentBooking(prevState: any, formData: FormDat
       });
 
     if (error) throw error;
+
+    // Handle File Uploads
+    const files = formData.getAll("images") as File[];
+    let uploadedUrls: string[] = [];
+    if (files.length > 0 && files[0].size > 0) {
+      uploadedUrls = await uploadFiles(requestId, "appointment", "quotation-images", files);
+    }
 
     // Email
     await sendNotificationEmail({
@@ -244,6 +263,7 @@ export async function submitAppointmentBooking(prevState: any, formData: FormDat
         "Preferred Time": dataObj.preferredTime,
         "Site Address": dataObj.address,
         "Additional Notes": dataObj.additionalNotes || "None",
+        "Uploaded Attachments": uploadedUrls.length > 0 ? uploadedUrls.join(", ") : "None",
       },
     });
 
@@ -296,10 +316,14 @@ export async function submitFreeConsultation(prevState: any, formData: FormData)
 
     const dataObj = validated.data;
     const db = getSupabaseAdmin();
+    
+    // Generate UUID on server side
+    const requestId = crypto.randomUUID();
 
     const { error } = await db
       .from("consultations")
       .insert({
+        id: requestId,
         full_name: dataObj.fullName,
         phone: dataObj.phone,
         email: dataObj.email,
@@ -311,6 +335,13 @@ export async function submitFreeConsultation(prevState: any, formData: FormData)
       });
 
     if (error) throw error;
+
+    // Handle File Uploads
+    const files = formData.getAll("images") as File[];
+    let uploadedUrls: string[] = [];
+    if (files.length > 0 && files[0].size > 0) {
+      uploadedUrls = await uploadFiles(requestId, "consultation", "quotation-images", files);
+    }
 
     // Email
     await sendNotificationEmail({
@@ -324,6 +355,7 @@ export async function submitFreeConsultation(prevState: any, formData: FormData)
         "Budget Range": dataObj.budget,
         "Site Address": dataObj.address,
         "Specific Ideas": dataObj.message,
+        "Uploaded Attachments": uploadedUrls.length > 0 ? uploadedUrls.join(", ") : "None",
       },
     });
 
@@ -621,10 +653,14 @@ export async function submitBuyProperty(prevState: any, formData: FormData) {
 
     const dataObj = validated.data;
     const db = getSupabaseAdmin();
+    
+    // Generate UUID on server side
+    const requestId = crypto.randomUUID();
 
     const { error } = await db
       .from("buy_property_requests")
       .insert({
+        id: requestId,
         full_name: dataObj.fullName,
         phone: dataObj.phone,
         email: dataObj.email,
@@ -635,6 +671,13 @@ export async function submitBuyProperty(prevState: any, formData: FormData) {
       });
 
     if (error) throw error;
+
+    // Handle File Uploads
+    const files = formData.getAll("images") as File[];
+    let uploadedUrls: string[] = [];
+    if (files.length > 0 && files[0].size > 0) {
+      uploadedUrls = await uploadFiles(requestId, "buy_property", "property-images", files);
+    }
 
     // Email
     await sendNotificationEmail({
@@ -647,6 +690,7 @@ export async function submitBuyProperty(prevState: any, formData: FormData) {
         "Preferred Locations": dataObj.preferredLocation,
         "Budget Range": dataObj.budget,
         "Requirements": dataObj.requirements,
+        "Uploaded Photos": uploadedUrls.length > 0 ? uploadedUrls.join(", ") : "None",
       },
     });
 

@@ -146,6 +146,11 @@ export default function PropertyAssistance() {
     setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
+  // Reset selected files when active tab changes
+  useEffect(() => {
+    setSelectedFiles([]);
+  }, [activeTab]);
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (loading) return;
@@ -154,20 +159,23 @@ export default function PropertyAssistance() {
 
     const formData = new FormData(e.currentTarget);
 
+    // Append files
+    formData.delete("images");
+    selectedFiles.forEach((file) => {
+      formData.append("images", file);
+    });
+
     try {
       let res;
       if (activeTab === "buy") {
         res = await submitBuyProperty(null, formData);
       } else {
-        formData.delete("images");
-        selectedFiles.forEach((file) => {
-          formData.append("images", file);
-        });
         res = await submitSellProperty(null, formData);
       }
 
       if (res.success) {
         setSubmitted(true);
+        setSelectedFiles([]); // Reset files
         confetti({
           particleCount: 80,
           spread: 60,
@@ -407,6 +415,61 @@ export default function PropertyAssistance() {
                           />
                           {errors.requirements && (
                             <p className="text-[11px] text-accent-terracotta mt-1">{errors.requirements[0]}</p>
+                          )}
+                        </div>
+
+                        {/* Image Upload Area */}
+                        <div>
+                          <label className="block text-[13px] font-semibold text-text-charcoal/80 mb-2 flex items-center justify-between">
+                            <span>Attach Reference Layouts or Location Images (Optional)</span>
+                            <span className="text-[11px] text-text-charcoal/50">Max 5MB each, Images only</span>
+                          </label>
+
+                          <div
+                            onClick={() => !loading && fileInputRef.current?.click()}
+                            className="border-2 border-dashed border-outline/40 hover:border-secondary-sage/60 rounded-2xl p-6 text-center cursor-pointer bg-bg-cream transition-colors flex flex-col items-center justify-center gap-2 group disabled:opacity-50"
+                          >
+                            <input
+                              type="file"
+                              ref={fileInputRef}
+                              name="images"
+                              multiple
+                              accept="image/*"
+                              onChange={handleFileChange}
+                              disabled={loading}
+                              className="hidden"
+                            />
+                            <Upload size={22} className="text-text-charcoal/40 group-hover:text-secondary-sage transition-colors" />
+                            <span className="text-[13px] font-semibold text-text-charcoal/70">
+                              Click to upload reference images
+                            </span>
+                          </div>
+
+                          {selectedFiles.length > 0 && (
+                            <div className="mt-3 space-y-1.5 max-h-[120px] overflow-y-auto pr-1">
+                              {selectedFiles.map((file, index) => (
+                                <div
+                                  key={index}
+                                  className="flex items-center justify-between bg-surface border border-outline/35 rounded-xl px-3 py-2 text-[12px]"
+                                >
+                                  <div className="flex items-center gap-2 text-text-charcoal/80 max-w-[85%]">
+                                    <FileText size={14} className="text-secondary-sage shrink-0" />
+                                    <span className="truncate font-semibold">{file.name}</span>
+                                    <span className="text-text-charcoal/40 shrink-0">
+                                      ({(file.size / (1024 * 1024)).toFixed(2)} MB)
+                                    </span>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    disabled={loading}
+                                    onClick={() => removeFile(index)}
+                                    className="text-accent-terracotta hover:text-red-700 font-bold p-1 disabled:opacity-50 cursor-pointer"
+                                  >
+                                    <X size={14} />
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
                           )}
                         </div>
                       </>
