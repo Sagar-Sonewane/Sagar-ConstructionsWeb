@@ -1,5 +1,9 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
+# AI agent config files (IDE-specific, not project code)
+AGENTS.md
+CLAUDE.md
+
 # dependencies
 /node_modules
 /.pnp
@@ -30,8 +34,13 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
+# env files — only ignore real secret files, not the example template
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+!.env.example
 
 # vercel
 .vercel
