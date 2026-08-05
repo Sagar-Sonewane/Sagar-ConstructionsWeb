@@ -53,29 +53,164 @@ async function sendNotificationEmail({
   const fromEmail = process.env.NOTIFICATION_EMAIL_FROM || "onboarding@resend.dev";
   const apiKey = process.env.RESEND_API_KEY;
 
-  const formattedDetails = Object.entries(details)
-    .map(([key, val]) => `<li><strong>${key}:</strong> ${val}</li>`)
+  const rawDigits = phone.replace(/[^0-9]/g, "");
+  const cleanPhone = rawDigits.startsWith("91") ? `+${rawDigits}` : rawDigits.length === 10 ? `+91${rawDigits}` : phone;
+  const waUrl = rawDigits.length >= 10 ? `https://wa.me/${rawDigits.length === 10 ? "91" + rawDigits : rawDigits}` : null;
+
+  const detailsEntries = Object.entries(details);
+  const detailsRowsHtml = detailsEntries
+    .map(([key, val], index) => {
+      const isLast = index === detailsEntries.length - 1;
+      const borderStyle = isLast ? "" : "border-bottom: 1px solid #ebf0ee;";
+      
+      let displayValue = val;
+      if (typeof val === "string" && val.includes("http")) {
+        const urls = val.split(", ").filter(Boolean);
+        displayValue = urls
+          .map(
+            (u, i) =>
+              `<a href="${u}" target="_blank" style="color: #1c3d3a; font-weight: 600; text-decoration: underline; background: #e8f0ec; padding: 3px 8px; border-radius: 6px; display: inline-block; margin: 2px 4px 2px 0; font-size: 12px;">📎 View File ${i + 1}</a>`
+          )
+          .join(" ");
+      }
+
+      return `
+        <tr>
+          <td style="padding: 12px 16px; ${borderStyle} font-size: 13px; color: #667085; width: 35%; font-weight: 500; vertical-align: top;">${key}</td>
+          <td style="padding: 12px 16px; ${borderStyle} font-size: 14px; color: #101828; font-weight: 600; vertical-align: top; line-height: 1.5;">${displayValue || "None"}</td>
+        </tr>
+      `;
+    })
     .join("");
 
+  const submissionTime = new Date().toLocaleString("en-IN", {
+    timeZone: "Asia/Kolkata",
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+
   const emailHtml = `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eaeaea; border-radius: 12px; background-color: #fcfbfa;">
-      <h2 style="color: #1c3d3a; border-bottom: 2px solid #5a7d75; padding-bottom: 10px; font-family: 'Times New Roman', serif;">
-        Sagar Constructions - New Lead Notification
-      </h2>
-      <p style="font-size: 14px; color: #4a4a4a;">You have received a new <strong>${type}</strong> submission.</p>
-      <div style="background-color: #f3f0ec; padding: 15px; border-radius: 8px; margin: 15px 0;">
-        <ul style="list-style: none; padding: 0; margin: 0; font-size: 14px; line-height: 1.6; color: #2c2c2c;">
-          <li><strong>Customer Name:</strong> ${name}</li>
-          <li><strong>Phone Number:</strong> ${phone}</li>
-          <li><strong>Email Address:</strong> ${email || "Not Provided"}</li>
-          ${formattedDetails}
-          <li><strong>Submission Time:</strong> ${new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}</li>
-        </ul>
-      </div>
-      <p style="font-size: 11px; color: #888888; text-align: center; margin-top: 20px;">
-        This is an automated notification from the Sagar Constructions lead processing system.
-      </p>
-    </div>
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>New Lead Notification</title>
+</head>
+<body style="margin: 0; padding: 24px 12px; background-color: #f4f6f5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased;">
+  <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" style="max-width: 580px; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.06); border: 1px solid #e2e8e5;" border="0" cellspacing="0" cellpadding="0">
+          
+          <!-- Header Banner -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #1c3d3a 0%, #2a524e 100%); padding: 28px 32px; text-align: left;">
+              <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0">
+                <tr>
+                  <td>
+                    <span style="background-color: rgba(255, 255, 255, 0.15); color: #d4e5e1; font-size: 11px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; padding: 5px 12px; border-radius: 20px; display: inline-block; margin-bottom: 10px;">
+                      ⚡ New Inquiry Received
+                    </span>
+                    <h1 style="color: #ffffff; font-size: 22px; font-weight: 700; margin: 0 0 4px 0; font-family: 'Times New Roman', Georgia, serif; letter-spacing: -0.2px;">
+                      Sagar Constructions
+                    </h1>
+                    <p style="color: #a4c4bc; font-size: 14px; margin: 0; font-weight: 500;">
+                      Form Type: <strong style="color: #ffffff;">${type}</strong>
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Body Content -->
+          <tr>
+            <td style="padding: 28px 32px;">
+
+              <!-- Quick Action Bar -->
+              <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 24px;">
+                <tr>
+                  <td style="background-color: #f5f8f7; border: 1px solid #deeadf; border-radius: 12px; padding: 14px 18px;">
+                    <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0">
+                      <tr>
+                        <td style="font-size: 13px; color: #3b524c; font-weight: 600;">Quick Action:</td>
+                        <td align="right">
+                          <a href="tel:${cleanPhone}" style="display: inline-block; background-color: #1c3d3a; color: #ffffff; font-size: 12px; font-weight: 600; text-decoration: none; padding: 8px 14px; border-radius: 8px; margin-right: 6px;">
+                            📞 Call Lead
+                          </a>
+                          ${
+                            waUrl
+                              ? `<a href="${waUrl}" target="_blank" style="display: inline-block; background-color: #25D366; color: #ffffff; font-size: 12px; font-weight: 600; text-decoration: none; padding: 8px 14px; border-radius: 8px;">
+                            💬 WhatsApp
+                          </a>`
+                              : ""
+                          }
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Customer Info Card -->
+              <div style="margin-bottom: 24px;">
+                <h2 style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #5a7d75; margin: 0 0 10px 0;">
+                  Customer Information
+                </h2>
+                <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="border-collapse: separate; border-spacing: 0; background-color: #fafbfc; border: 1px solid #eaeff1; border-radius: 12px; overflow: hidden;">
+                  <tr>
+                    <td style="padding: 12px 16px; border-bottom: 1px solid #eaeff1; font-size: 13px; color: #667085; width: 35%; font-weight: 500;">Customer Name</td>
+                    <td style="padding: 12px 16px; border-bottom: 1px solid #eaeff1; font-size: 14px; color: #101828; font-weight: 700;">${name}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 12px 16px; border-bottom: 1px solid #eaeff1; font-size: 13px; color: #667085; font-weight: 500;">Phone Number</td>
+                    <td style="padding: 12px 16px; border-bottom: 1px solid #eaeff1; font-size: 14px; color: #1c3d3a; font-weight: 700;">
+                      <a href="tel:${cleanPhone}" style="color: #1c3d3a; text-decoration: none;">${phone}</a>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 12px 16px; font-size: 13px; color: #667085; font-weight: 500;">Email Address</td>
+                    <td style="padding: 12px 16px; font-size: 14px; color: #101828; font-weight: 500;">
+                      ${email ? `<a href="mailto:${email}" style="color: #1c3d3a; text-decoration: underline;">${email}</a>` : '<span style="color: #98a2b3; font-style: italic;">Not Provided</span>'}
+                    </td>
+                  </tr>
+                </table>
+              </div>
+
+              <!-- Request Details Card -->
+              <div style="margin-bottom: 20px;">
+                <h2 style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #5a7d75; margin: 0 0 10px 0;">
+                  Submission Details
+                </h2>
+                <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="border-collapse: separate; border-spacing: 0; background-color: #fafbfc; border: 1px solid #eaeff1; border-radius: 12px; overflow: hidden;">
+                  ${detailsRowsHtml}
+                </table>
+              </div>
+
+              <!-- Timestamp -->
+              <p style="font-size: 12px; color: #667085; margin: 16px 0 0 0; text-align: right;">
+                ⏱ Submitted on: <strong>${submissionTime}</strong>
+              </p>
+
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #f7faf8; padding: 18px 32px; border-top: 1px solid #e8f0eb; text-align: center;">
+              <p style="font-size: 11px; color: #667085; margin: 0; line-height: 1.5;">
+                This lead notification was automatically generated by <strong>Sagar Constructions Web Platform</strong> and saved to your Supabase database.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
   `;
 
   if (!apiKey || apiKey === "re_123456789") {
@@ -92,7 +227,7 @@ async function sendNotificationEmail({
     const { data, error } = await resend.emails.send({
       from: fromEmail,
       to: toEmail,
-      subject: `[Sagar Constructions] New ${type} from ${name}`,
+      subject: `[Sagar Lead] ${type} - ${name}`,
       html: emailHtml,
     });
 
@@ -105,6 +240,7 @@ async function sendNotificationEmail({
     console.error("Failed to send email via Resend (network or client issue):", err);
   }
 }
+
 
 // 1. Submit Contact Form Action
 export async function submitContactForm(prevState: any, formData: FormData) {
