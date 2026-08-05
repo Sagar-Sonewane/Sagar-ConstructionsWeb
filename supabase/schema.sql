@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS public.contact_requests (
     notes TEXT
 );
 
+DROP TRIGGER IF EXISTS update_contact_requests_updated_at ON public.contact_requests;
 CREATE TRIGGER update_contact_requests_updated_at 
 BEFORE UPDATE ON public.contact_requests 
 FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
@@ -45,6 +46,7 @@ CREATE TABLE IF NOT EXISTS public.appointments (
     notes TEXT
 );
 
+DROP TRIGGER IF EXISTS update_appointments_updated_at ON public.appointments;
 CREATE TRIGGER update_appointments_updated_at 
 BEFORE UPDATE ON public.appointments 
 FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
@@ -66,6 +68,7 @@ CREATE TABLE IF NOT EXISTS public.consultations (
     notes TEXT
 );
 
+DROP TRIGGER IF EXISTS update_consultations_updated_at ON public.consultations;
 CREATE TRIGGER update_consultations_updated_at 
 BEFORE UPDATE ON public.consultations 
 FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
@@ -86,6 +89,7 @@ CREATE TABLE IF NOT EXISTS public.quotation_requests (
     notes TEXT
 );
 
+DROP TRIGGER IF EXISTS update_quotation_requests_updated_at ON public.quotation_requests;
 CREATE TRIGGER update_quotation_requests_updated_at 
 BEFORE UPDATE ON public.quotation_requests 
 FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
@@ -106,6 +110,7 @@ CREATE TABLE IF NOT EXISTS public.buy_property_requests (
     notes TEXT
 );
 
+DROP TRIGGER IF EXISTS update_buy_property_requests_updated_at ON public.buy_property_requests;
 CREATE TRIGGER update_buy_property_requests_updated_at 
 BEFORE UPDATE ON public.buy_property_requests 
 FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
@@ -127,6 +132,7 @@ CREATE TABLE IF NOT EXISTS public.sell_property_requests (
     notes TEXT
 );
 
+DROP TRIGGER IF EXISTS update_sell_property_requests_updated_at ON public.sell_property_requests;
 CREATE TRIGGER update_sell_property_requests_updated_at 
 BEFORE UPDATE ON public.sell_property_requests 
 FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
@@ -152,6 +158,23 @@ ALTER TABLE public.quotation_requests ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.buy_property_requests ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.sell_property_requests ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.uploaded_files ENABLE ROW LEVEL SECURITY;
+
+-- Drop existing policies if present
+DROP POLICY IF EXISTS "Allow public inserts" ON public.contact_requests;
+DROP POLICY IF EXISTS "Allow public inserts" ON public.appointments;
+DROP POLICY IF EXISTS "Allow public inserts" ON public.consultations;
+DROP POLICY IF EXISTS "Allow public inserts" ON public.quotation_requests;
+DROP POLICY IF EXISTS "Allow public inserts" ON public.buy_property_requests;
+DROP POLICY IF EXISTS "Allow public inserts" ON public.sell_property_requests;
+DROP POLICY IF EXISTS "Allow public inserts" ON public.uploaded_files;
+
+DROP POLICY IF EXISTS "Allow authenticated read/write" ON public.contact_requests;
+DROP POLICY IF EXISTS "Allow authenticated read/write" ON public.appointments;
+DROP POLICY IF EXISTS "Allow authenticated read/write" ON public.consultations;
+DROP POLICY IF EXISTS "Allow authenticated read/write" ON public.quotation_requests;
+DROP POLICY IF EXISTS "Allow authenticated read/write" ON public.buy_property_requests;
+DROP POLICY IF EXISTS "Allow authenticated read/write" ON public.sell_property_requests;
+DROP POLICY IF EXISTS "Allow authenticated read/write" ON public.uploaded_files;
 
 -- Create policies to allow public (anon) insertions only
 CREATE POLICY "Allow public inserts" ON public.contact_requests FOR INSERT WITH CHECK (true);
@@ -182,5 +205,6 @@ ON CONFLICT (id) DO UPDATE SET
   allowed_mime_types = EXCLUDED.allowed_mime_types;
 
 -- Storage RLS Policies
--- Allow public to view objects in these buckets
+DROP POLICY IF EXISTS "Allow public read of storage objects" ON storage.objects;
 CREATE POLICY "Allow public read of storage objects" ON storage.objects FOR SELECT USING (bucket_id IN ('quotation-images', 'property-images'));
+
